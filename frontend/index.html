@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Content App</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    h1, h2 { margin-bottom: 10px; }
+    ul { list-style: none; padding: 0; }
+    li { cursor: pointer; padding: 8px; border-bottom: 1px solid #eee; }
+    li:hover { background: #f9f9f9; }
+    form { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px; }
+    label { display: block; margin-top: 10px; }
+    video, audio { margin-top: 20px; max-width: 100%; }
+  </style>
+</head>
+<body>
+  <h1>📺 All Content</h1>
+  <ul id="content-list">Loading...</ul>
+
+  <h2>▶️ Player</h2>
+  <video id="video-player" controls></video>
+  <audio id="audio-player" controls style="display: none;"></audio>
+
+  <form id="upload-form">
+    <h2>📤 Upload New Content</h2>
+    <label>Title <input name="title" required></label>
+    <label>Description <input name="description"></label>
+    <label>Duration (in minutes) <input type="number" name="duration" min="0" step="any" required></label>
+    <label>Language
+      <select name="language">
+        <option value="en">English</option>
+        <option value="ar">Arabic</option>
+      </select>
+    </label>
+    <label>File (video/audio) <input type="file" name="file" required></label>
+    <button type="submit">Upload</button>
+  </form>
+
+  <script>
+    const CONTENT_API_BASE = ""; // http://localhost:3001
+    const UPLOADER_API_BASE = "http://localhost:3000";
+
+    async function fetchContentList() {
+      const res = await fetch(`${CONTENT_API_BASE}/contents`);
+      const contents = await res.json();
+
+      const list = document.getElementById('content-list');
+      list.innerHTML = "";
+
+      contents.forEach(c => {
+        const li = document.createElement('li');
+        li.textContent = `${c.title} (${c.language}) - ${c.status} - ${new Date(c.publication_date).toLocaleString()}`;
+        li.onclick = () => playContent(c.id);
+        list.appendChild(li);
+      });
+    }
+
+    async function playContent(contentId) {
+      const res = await fetch(`${CONTENT_API_BASE}/content/${contentId}/url`);
+      const { download_url } = await res.json();
+      const isVideo = download_url.endsWith(".mp4") || download_url.includes("video");
+
+      const video = document.getElementById("video-player");
+      const audio = document.getElementById("audio-player");
+
+      if (isVideo) {
+        video.src = download_url;
+        video.style.display = "block";
+        audio.style.display = "none";
+        video.play();
+      } else {
+        audio.src = download_url;
+        audio.style.display = "block";
+        video.style.display = "none";
+        audio.play();
+      }
+    }
+
+    document.getElementById("upload-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const form = e.target;
+      const file = form.file.files[0];
+      if (!file) return alert("Please select a file");
+
+      const metadata = {
+        title: form.title.value,
+        description: form.description.value,
+        language: form.language.value,
+        duration: parseFloat(form.duration.value),
+        status: "in_progress", // Set default upload status
+        filename: file.name,
+      };
+
+      // Step 1: Get presigned URL
+      const res = await fetch(`${UPLOADER_API_BASE}/upload-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(metadata)
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        return alert("Upload URL request failed: " + err);
+      }
+
+      const { upload_url, content_id } = await res.json();
+
+      // Step 2: Upload file to S3
+      const uploadRes = await fetch(upload_url, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file
+      });
+
+      if (!uploadRes.ok) {
+        return alert("Upload to S3 failed");
+      }
+
+      // Step 3: Notify backend to update status
+      const statusUpdate = await fetch(`${UPLOADER_API_BASE}/content/${content_id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "pass" })
+      });
+
+      if (!statusUpdate.ok) {
+        alert("Failed to update content status");
+      }
+
+      alert("Upload and status update complete!");
+      form.reset();
+      fetchContentList();
+    });
+
+    fetchContentList();
+  </script>
+</body>
+</html>
