@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+
+	"github.com/amal-meer/content_app/config"
 	"github.com/amal-meer/content_app/database"
 	"github.com/amal-meer/content_app/services/cms/routes"
 	"github.com/gofiber/fiber/v2"
@@ -8,15 +11,22 @@ import (
 )
 
 func main() {
-	// Initialize a new Fiber app
+	// Initialize configuration
+	config.InitConfig()
+	
+	// Initialize database
 	database.ConnectDb()
+	
+	// Initialize a new Fiber app
 	app := fiber.New()
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:3001",
+		AllowOrigins: "*",
 		AllowMethods: "*",
 	}))
 
 	routes.SetupRoutes(app)
-	app.Listen(":3000")
+	
+	serverAddr := fmt.Sprintf("%s:%s", config.AppConfig.Server.Host, config.AppConfig.Server.Port)
+	app.Listen(serverAddr)
 }

@@ -1,19 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Content App</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    h1, h2 { margin-bottom: 10px; }
-    ul { list-style: none; padding: 0; }
-    li { cursor: pointer; padding: 8px; border-bottom: 1px solid #eee; }
-    li:hover { background: #f9f9f9; }
-    form { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px; }
-    label { display: block; margin-top: 10px; }
-    video, audio { margin-top: 20px; max-width: 100%; }
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    h1,
+    h2 {
+      margin-bottom: 10px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      cursor: pointer;
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+
+    li:hover {
+      background: #f9f9f9;
+    }
+
+    form {
+      margin-top: 30px;
+      border-top: 1px solid #ccc;
+      padding-top: 20px;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+
+    video,
+    audio {
+      margin-top: 20px;
+      max-width: 100%;
+    }
   </style>
 </head>
+
 <body>
   <h1>📺 All Content</h1>
   <ul id="content-list">Loading...</ul>
@@ -39,7 +74,7 @@
 
   <script>
     const CONTENT_API_BASE = ""; // http://localhost:3001
-    const UPLOADER_API_BASE = "http://localhost:3000";
+    const UPLOADER_API_BASE = "http://localhost:3001";
 
     async function fetchContentList() {
       const res = await fetch(`${CONTENT_API_BASE}/contents`);
@@ -137,4 +172,5 @@
     fetchContentList();
   </script>
 </body>
+
 </html>
