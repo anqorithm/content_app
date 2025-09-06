@@ -1,19 +1,12 @@
 package handlers
 
 import (
-	"context"
-	"fmt"
 	"time"
 
-	"github.com/amal-meer/content_app/config"
 	"github.com/amal-meer/content_app/database"
 	"github.com/amal-meer/content_app/models"
+	"github.com/amal-meer/content_app/utils"
 	"github.com/gofiber/fiber/v2"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 func RequestUploadURL(c *fiber.Ctx) error {
@@ -31,7 +24,7 @@ func RequestUploadURL(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid input")
 	}
 
-	url, key, err := GeneratePresignedUploadURL(req.Filename)
+	url, key, err := utils.GeneratePresignedUploadURL(req.Filename)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -55,35 +48,6 @@ func RequestUploadURL(c *fiber.Ctx) error {
 	})
 }
 
-func GeneratePresignedUploadURL(filename string) (string, string, error) {
-	storageConfig := config.AppConfig.Storage
-
-	cfg, err := awsconfig.LoadDefaultConfig(context.TODO(),
-		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(storageConfig.AccessKey, storageConfig.SecretKey, "")),
-		awsconfig.WithRegion(storageConfig.Region),
-	)
-	if err != nil {
-		return "", "", err
-	}
-
-	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.UsePathStyle = true
-		o.BaseEndpoint = aws.String(storageConfig.Endpoint)
-	})
-	presignClient := s3.NewPresignClient(client)
-
-	key := fmt.Sprintf("uploads/%d_%s", time.Now().Unix(), filename)
-	req, err := presignClient.PresignPutObject(context.TODO(), &s3.PutObjectInput{
-		Bucket: aws.String(storageConfig.Bucket),
-		Key:    aws.String(key),
-	}, s3.WithPresignExpires(60*time.Minute))
-	
-	if err != nil {
-		return "", "", err
-	}
-	
-	return req.URL, key, err
-}
 
 func UpdateContentStatus(c *fiber.Ctx) error {
 	id := c.Params("id")

@@ -1,16 +1,9 @@
 package handlers
 
 import (
-	"context"
-	"time"
-
-	"github.com/amal-meer/content_app/config"
 	"github.com/amal-meer/content_app/database"
 	"github.com/amal-meer/content_app/models"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/amal-meer/content_app/utils"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -32,7 +25,7 @@ func GetContentURL(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Content not found")
 	}
 
-	url, err := GeneratePresignedDownloadURL(content.S3Key)
+	url, err := utils.GeneratePresignedDownloadURL(content.S3Key)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -40,31 +33,3 @@ func GetContentURL(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"download_url": url})
 }
 
-func GeneratePresignedDownloadURL(key string) (string, error) {
-	storageConfig := config.AppConfig.Storage
-
-	cfg, err := awsconfig.LoadDefaultConfig(context.TODO(),
-		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(storageConfig.AccessKey, storageConfig.SecretKey, "")),
-		awsconfig.WithRegion(storageConfig.Region),
-	)
-	if err != nil {
-		return "", err
-	}
-
-	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.UsePathStyle = true
-		o.BaseEndpoint = aws.String(storageConfig.Endpoint)
-	})
-	presign := s3.NewPresignClient(client)
-
-	req, err := presign.PresignGetObject(context.TODO(), &s3.GetObjectInput{
-		Bucket: aws.String(storageConfig.Bucket),
-		Key:    aws.String(key),
-	}, s3.WithPresignExpires(60*time.Minute))
-	
-	if err != nil {
-		return "", err
-	}
-	
-	return req.URL, err
-}
