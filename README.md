@@ -1,6 +1,6 @@
 # Content App
 
-REST APIs that can be used to upload and view video/audio contents, along with a simple UI page for local tests.
+A Go-based application for uploading and viewing video and audio content. It uses the S3 protocol for storage and includes MinIO for local development.
 
 ## How to run the app?
 - Install docker
